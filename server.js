@@ -159,6 +159,7 @@ app.post('/getTransactions', async (req, res) => {
 
     const params = [user_id];  // Массив параметров для запроса, в который будет добавляться user_id
 
+    // Если категория не выбрана (например, 'всё'), то фильтрация по категории не будет добавляться
     if (category !== 'всё') {
       query += ` AND category_id = $2`;
       params.push(category);  // Добавляем category в параметры запроса
@@ -200,7 +201,7 @@ app.post('/getTransactions', async (req, res) => {
 
     const transactions = result.rows.map(transaction => ({
       ...transaction,
-      category_name: categoryName
+      category_name: categoryName || 'Всё',  // Если категория не найдена, используем 'Всё'
     }));
 
     res.status(200).json(transactions);
@@ -210,7 +211,6 @@ app.post('/getTransactions', async (req, res) => {
     res.status(500).json({ message: 'Ошибка запроса к базе данных' });
   }
 });
-
 
 // Маршрут проверки
 app.get('/test', async (req, res) => {
