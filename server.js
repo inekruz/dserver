@@ -163,7 +163,7 @@ app.post('/getTransactions', async (req, res) => {
     // Если категория не 'всё', добавляем фильтрацию по категории
     if (category !== 'всё') {
       query += ` AND category_id = $2`;
-      params.push(category); // Добавляем category в параметры
+      params.push(category); // category - это теперь category_id
     }
 
     // Обработка фильтрации по времени
@@ -214,6 +214,7 @@ app.post('/getTransactions', async (req, res) => {
     res.status(500).json({ message: 'Ошибка запроса к базе данных' });
   }
 });
+
 
 
 // Маршрут проверки
