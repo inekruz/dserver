@@ -23,7 +23,7 @@ const pool = new Pool({
 });
 
 // Маршрут проверки
-app.get('/', async (req, res) => {
+app.get('/test', async (req, res) => {
   try {
     const client = await pool.connect();
     const result = await client.query('SELECT NOW()');
