@@ -145,8 +145,6 @@ app.get('/categories', async (req, res) => {
   }
 });
 
-
-// Маршрут для получения транзакций пользователя с фильтрацией
 app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
 
@@ -156,32 +154,37 @@ app.post('/getTransactions', async (req, res) => {
 
   try {
     const currentDate = new Date();
-
     let query = `SELECT user_id, category_id, amount, date, description, created_at, updated_at
                  FROM transactions WHERE user_id = $1`;
 
+    const params = [user_id];  // Массив параметров для запроса, в который будет добавляться user_id
+
     if (category !== 'всё') {
       query += ` AND category_id = $2`;
+      params.push(category);  // Добавляем category в параметры запроса
     }
 
     let dateFilter = '';
     if (srok === 'месяц') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 1);
+      params.push(currentDate);  // Добавляем параметр даты
     } else if (srok === 'три месяца') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 3);
+      params.push(currentDate);  // Добавляем параметр даты
     } else if (srok === 'год') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setFullYear(currentDate.getFullYear() - 1);
+      params.push(currentDate);  // Добавляем параметр даты
     } else if (srok === 'всё время') {
-      dateFilter = '';
+      dateFilter = '';  // Нет фильтра по дате
     }
 
     query += dateFilter;
     query += ' ORDER BY category_id, date DESC';
 
-    const result = await pool.query(query, [user_id, category, currentDate]);
+    const result = await pool.query(query, params); // Передаем params в запрос
 
     let categoryName = null;
     if (category !== 'всё') {
