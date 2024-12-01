@@ -134,7 +134,10 @@ app.post('/get-categories', async (req, res) => {
   }
 
   try {
-    const result = await pool.query('SELECT DISTINCT name FROM categories WHERE user_id = $1', [user_id]);
+    const result = await pool.query(
+      'SELECT DISTINCT category_id, name FROM categories WHERE user_id = $1',
+      [user_id]
+    );
     res.status(200).json({ categories: result.rows });
   } catch (err) {
     console.error('Ошибка при получении категорий:', err);
@@ -146,81 +149,45 @@ app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
   console.log('Полученные данные:', { user_id, category, srok });
 
-  if (!user_id || !category || !srok) {
+  if (!user_id || (!category && category !== 0) || !srok) {
     return res.status(400).json({ message: 'user_id, category и srok обязательны.' });
   }
 
   try {
-    // Убедимся, что category - это число
-    const categoryId = parseInt(category);
-    if (isNaN(categoryId)) {
-      return res.status(400).json({ message: 'Неверный формат категории.' });
-    }
+    const categoryId = category !== null ? parseInt(category, 10) : null;
 
     const currentDate = new Date();
-
-    // Начинаем с базового запроса
-    let query = `SELECT user_id, category_id, amount, date, description, created_at, updated_at
+    let query = `SELECT user_id, category_id, amount, date, description 
                  FROM transactions WHERE user_id = $1`;
-
-    // Массив параметров, начинаем с user_id
     const params = [user_id];
 
-    // Если категория не 'всё', добавляем фильтрацию по категории
-    if (categoryId !== 'всё') {
+    if (categoryId !== null) {
       query += ` AND category_id = $2`;
-      params.push(categoryId); // category - это теперь category_id (INT)
+      params.push(categoryId);
     }
 
-    // Обработка фильтрации по времени
-    let dateFilter = '';
     if (srok === 'месяц') {
-      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 1);
-      params.push(currentDate); // Добавляем дату в параметры
     } else if (srok === 'три месяца') {
-      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 3);
-      params.push(currentDate); // Добавляем дату в параметры
     } else if (srok === 'год') {
-      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setFullYear(currentDate.getFullYear() - 1);
-      params.push(currentDate); // Добавляем дату в параметры
     }
 
-    query += dateFilter;
-    query += ' ORDER BY category_id, date DESC';
+    if (srok !== 'всё время') {
+      query += ` AND date >= $${params.length + 1}`;
+      params.push(currentDate);
+    }
 
-    // Выполняем запрос с нужными параметрами
+    query += ' ORDER BY date DESC';
+
     const result = await pool.query(query, params);
-
-    let categoryName = null;
-    // Если фильтрация по категории активна, получаем имя категории
-    if (categoryId !== 'всё') {
-      const categoryResult = await pool.query(
-        'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
-        [categoryId, user_id]
-      );
-
-      if (categoryResult.rows.length > 0) {
-        categoryName = categoryResult.rows[0].name;
-      }
-    }
-
-    // Добавляем имя категории в каждый объект транзакции
-    const transactions = result.rows.map(transaction => ({
-      ...transaction,
-      category_name: categoryName
-    }));
-
-    res.status(200).json(transactions);
-
+    res.status(200).json(result.rows);
   } catch (err) {
     console.error('Ошибка запроса к базе данных:', err);
-    res.status(500).json({ message: 'Ошибка запроса к базе данных' });
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
-
 
 
 // Маршрут проверки
