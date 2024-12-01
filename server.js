@@ -102,6 +102,69 @@ app.get('/protected', (req, res) => {
   });
 });
 
+// Маршрут для получения транзакций пользователя с фильтрацией
+app.post('/getTransactions', async (req, res) => {
+  const { user_id, category, srok } = req.body;
+
+  if (!user_id || !category || !srok) {
+    return res.status(400).json({ message: 'user_id, category и srok обязательны.' });
+  }
+
+  try {
+    const currentDate = new Date();
+
+    let query = `SELECT user_id, category_id, amount, date, description, created_at, updated_at
+                 FROM transactions WHERE user_id = $1`;
+
+    if (category !== 'всё') {
+      query += ` AND category_id = $2`;
+    }
+
+    let dateFilter = '';
+    if (srok === 'месяц') {
+      dateFilter = ` AND date >= $3::timestamp`;
+      currentDate.setMonth(currentDate.getMonth() - 1);
+    } else if (srok === 'три месяца') {
+      dateFilter = ` AND date >= $3::timestamp`;
+      currentDate.setMonth(currentDate.getMonth() - 3);
+    } else if (srok === 'год') {
+      dateFilter = ` AND date >= $3::timestamp`;
+      currentDate.setFullYear(currentDate.getFullYear() - 1);
+    } else if (srok === 'всё время') {
+      dateFilter = '';
+    }
+
+    query += dateFilter;
+    query += ' ORDER BY category_id, date DESC';
+
+    const result = await pool.query(query, [user_id, category, currentDate]);
+
+    let categoryName = null;
+    if (category !== 'всё') {
+      const categoryResult = await pool.query(
+        'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
+        [category, user_id]
+      );
+
+      if (categoryResult.rows.length > 0) {
+        categoryName = categoryResult.rows[0].name;
+      }
+    }
+
+    const transactions = result.rows.map(transaction => ({
+      ...transaction,
+      category_name: categoryName
+    }));
+
+    res.status(200).json(transactions);
+
+  } catch (err) {
+    console.error('Ошибка запроса к базе данных:', err);
+    res.status(500).json({ message: 'Ошибка запроса к базе данных' });
+  }
+});
+
+
 // Маршрут проверки
 app.get('/test', async (req, res) => {
   try {
