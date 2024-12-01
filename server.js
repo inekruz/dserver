@@ -134,10 +134,7 @@ app.post('/get-categories', async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      'SELECT DISTINCT id, name FROM categories WHERE user_id = $1',
-      [user_id]
-    );
+    const result = await pool.query('SELECT DISTINCT name FROM categories WHERE user_id = $1', [user_id]);
     res.status(200).json({ categories: result.rows });
   } catch (err) {
     console.error('Ошибка при получении категорий:', err);
@@ -145,51 +142,68 @@ app.post('/get-categories', async (req, res) => {
   }
 });
 
+// Маршрут для получения транзакций пользователя с фильтрацией
 app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
 
-  if (!user_id || (!category && category !== 0) || !srok) {
+  if (!user_id || !category || !srok) {
     return res.status(400).json({ message: 'user_id, category и srok обязательны.' });
   }
 
   try {
-    const categoryId = category !== null ? parseInt(category, 10) : null;
-    if (categoryId !== null && isNaN(categoryId)) {
-      return res.status(400).json({ message: 'Неверный формат категории.' });
-    }
-
     const currentDate = new Date();
-    let query = `SELECT user_id, category_id, amount, date, description 
-                 FROM transactions WHERE user_id = $1`;
-    const params = [user_id];
 
-    if (categoryId !== null) {
+    let query = `SELECT user_id, category_id, amount, date, description, created_at, updated_at
+                 FROM transactions WHERE user_id = $1`;
+
+    if (category !== 'всё') {
       query += ` AND category_id = $2`;
-      params.push(categoryId);
     }
 
+    let dateFilter = '';
     if (srok === 'месяц') {
+      dateFilter = ` AND date >= $3::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 1);
     } else if (srok === 'три месяца') {
+      dateFilter = ` AND date >= $3::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 3);
     } else if (srok === 'год') {
+      dateFilter = ` AND date >= $3::timestamp`;
       currentDate.setFullYear(currentDate.getFullYear() - 1);
+    } else if (srok === 'всё время') {
+      dateFilter = '';
     }
 
-    if (srok !== 'всё время') {
-      query += ` AND date >= $${params.length + 1}`;
-      params.push(currentDate);
+    query += dateFilter;
+    query += ' ORDER BY category_id, date DESC';
+
+    const result = await pool.query(query, [user_id, category, currentDate]);
+
+    let categoryName = null;
+    if (category !== 'всё') {
+      const categoryResult = await pool.query(
+        'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
+        [category, user_id]
+      );
+
+      if (categoryResult.rows.length > 0) {
+        categoryName = categoryResult.rows[0].name;
+      }
     }
 
-    query += ' ORDER BY date DESC';
+    const transactions = result.rows.map(transaction => ({
+      ...transaction,
+      category_name: categoryName
+    }));
 
-    const result = await pool.query(query, params);
-    res.status(200).json(result.rows);
+    res.status(200).json(transactions);
+
   } catch (err) {
     console.error('Ошибка запроса к базе данных:', err);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    res.status(500).json({ message: 'Ошибка запроса к базе данных' });
   }
 });
+
 
 // Маршрут проверки
 app.get('/test', async (req, res) => {
