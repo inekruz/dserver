@@ -4,20 +4,13 @@ const fs = require('fs');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require('cors');  // Импортируем cors
+const cors = require('cors'); 
 require('dotenv').config();
 
 const app = express();
 
 // Настройка CORS
-const corsOptions = {
-  origin: 'https://dwal.netlify.app', 
-  methods: ['GET', 'POST'], 
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-// Используем CORS
-app.use(cors(corsOptions));
+app.use(cors());
 
 // Настройка HTTPS-сертификатов
 const options = {
