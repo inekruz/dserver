@@ -147,7 +147,6 @@ app.post('/get-categories', async (req, res) => {
 
 app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
-  console.log('Полученные данные:', { user_id, category, srok });
 
   if (!user_id || (!category && category !== 0) || !srok) {
     return res.status(400).json({ message: 'user_id, category и srok обязательны.' });
@@ -155,6 +154,9 @@ app.post('/getTransactions', async (req, res) => {
 
   try {
     const categoryId = category !== null ? parseInt(category, 10) : null;
+    if (categoryId !== null && isNaN(categoryId)) {
+      return res.status(400).json({ message: 'Неверный формат категории.' });
+    }
 
     const currentDate = new Date();
     let query = `SELECT user_id, category_id, amount, date, description 
@@ -188,7 +190,6 @@ app.post('/getTransactions', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
-
 
 // Маршрут проверки
 app.get('/test', async (req, res) => {
