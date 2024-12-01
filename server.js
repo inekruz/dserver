@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
-const PORT = 443;
+
 
 // Настройка HTTPS-сертификатов
 const options = {
@@ -36,6 +36,7 @@ app.get('/test', async (req, res) => {
 });
 
 // Запуск сервера
+const PORT = 8443;
 https.createServer(options, app).listen(PORT, 'api.dvoich.ru', () => {
   console.log(`Сервер запущен на https://api.dvoich.ru:${PORT}`);
 });
