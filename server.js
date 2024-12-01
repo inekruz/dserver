@@ -102,6 +102,46 @@ app.get('/protected', (req, res) => {
   });
 });
 
+// Получение user_id по логину
+app.post('/get-user-id', async (req, res) => {
+  const { login } = req.body;
+
+  if (!login) {
+    return res.status(400).json({ message: 'Логин обязателен.' });
+  }
+
+  try {
+    const result = await pool.query('SELECT id FROM users WHERE login = $1', [login]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Пользователь не найден.' });
+    }
+
+    const user = result.rows[0];
+    res.status(200).json({ user_id: user.id });
+  } catch (err) {
+    console.error('Ошибка при получении user_id:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// Получение уникальных категорий для пользователя
+app.post('/get-categories', async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ message: 'user_id обязателен.' });
+  }
+
+  try {
+    const result = await pool.query('SELECT DISTINCT name FROM categories WHERE user_id = $1', [user_id]);
+    res.status(200).json({ categories: result.rows });
+  } catch (err) {
+    console.error('Ошибка при получении категорий:', err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // Маршрут для получения транзакций пользователя с фильтрацией
 app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
