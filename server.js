@@ -125,22 +125,26 @@ app.post('/get-user-id', async (req, res) => {
   }
 });
 
-// Получение уникальных категорий для пользователя
-app.post('/get-categories', async (req, res) => {
-  const { user_id } = req.body;
+// Получение категорий для пользователя
+app.get('/categories', async (req, res) => {
+  const { user_id } = req.query;
 
   if (!user_id) {
-    return res.status(400).json({ message: 'user_id обязателен.' });
+      return res.status(400).json({ message: 'Не указан user_id.' });
   }
 
   try {
-    const result = await pool.query('SELECT DISTINCT name FROM categories WHERE user_id = $1', [user_id]);
-    res.status(200).json({ categories: result.rows });
+      const result = await pool.query(
+          'SELECT id, name FROM categories WHERE user_id = $1',
+          [user_id]
+      );
+      res.status(200).json(result.rows);
   } catch (err) {
-    console.error('Ошибка при получении категорий:', err);
-    res.status(500).json({ message: 'Ошибка сервера' });
+      console.error('Ошибка получения категорий:', err);
+      res.status(500).json({ message: 'Ошибка при получении категорий.' });
   }
 });
+
 
 // Маршрут для получения транзакций пользователя с фильтрацией
 app.post('/getTransactions', async (req, res) => {
