@@ -135,7 +135,7 @@ app.post('/get-categories', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT DISTINCT category_id, name FROM categories WHERE user_id = $1',
+      'SELECT DISTINCT id, name FROM categories WHERE user_id = $1',
       [user_id]
     );
     res.status(200).json({ categories: result.rows });
