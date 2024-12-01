@@ -189,7 +189,7 @@ app.post('/getTransactions', async (req, res) => {
     let categoryName = null;
     if (category !== 'всё') {
       const categoryResult = await pool.query(
-        'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
+        'SELECT name FROM categories WHERE id = $1 AND user_id = $2',
         [category, user_id]
       );
 
