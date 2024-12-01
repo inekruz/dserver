@@ -151,6 +151,12 @@ app.post('/getTransactions', async (req, res) => {
   }
 
   try {
+    // Убедимся, что category - это число
+    const categoryId = parseInt(category);
+    if (isNaN(categoryId)) {
+      return res.status(400).json({ message: 'Неверный формат категории.' });
+    }
+
     const currentDate = new Date();
 
     // Начинаем с базового запроса
@@ -161,9 +167,9 @@ app.post('/getTransactions', async (req, res) => {
     const params = [user_id];
 
     // Если категория не 'всё', добавляем фильтрацию по категории
-    if (category !== 'всё') {
+    if (categoryId !== 'всё') {
       query += ` AND category_id = $2`;
-      params.push(category); // category - это теперь category_id
+      params.push(categoryId); // category - это теперь category_id (INT)
     }
 
     // Обработка фильтрации по времени
@@ -190,10 +196,10 @@ app.post('/getTransactions', async (req, res) => {
 
     let categoryName = null;
     // Если фильтрация по категории активна, получаем имя категории
-    if (category !== 'всё') {
+    if (categoryId !== 'всё') {
       const categoryResult = await pool.query(
         'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
-        [category, user_id]
+        [categoryId, user_id]
       );
 
       if (categoryResult.rows.length > 0) {
