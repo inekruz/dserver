@@ -142,9 +142,9 @@ app.post('/get-categories', async (req, res) => {
   }
 });
 
-// Маршрут для получения транзакций пользователя с фильтрацией
 app.post('/getTransactions', async (req, res) => {
   const { user_id, category, srok } = req.body;
+  console.log('Полученные данные:', { user_id, category, srok });
 
   if (!user_id || !category || !srok) {
     return res.status(400).json({ message: 'user_id, category и srok обязательны.' });
@@ -153,33 +153,43 @@ app.post('/getTransactions', async (req, res) => {
   try {
     const currentDate = new Date();
 
+    // Начинаем с базового запроса
     let query = `SELECT user_id, category_id, amount, date, description, created_at, updated_at
                  FROM transactions WHERE user_id = $1`;
 
+    // Массив параметров, начинаем с user_id
+    const params = [user_id];
+
+    // Если категория не 'всё', добавляем фильтрацию по категории
     if (category !== 'всё') {
       query += ` AND category_id = $2`;
+      params.push(category); // Добавляем category в параметры
     }
 
+    // Обработка фильтрации по времени
     let dateFilter = '';
     if (srok === 'месяц') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 1);
+      params.push(currentDate); // Добавляем дату в параметры
     } else if (srok === 'три месяца') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setMonth(currentDate.getMonth() - 3);
+      params.push(currentDate); // Добавляем дату в параметры
     } else if (srok === 'год') {
-      dateFilter = ` AND date >= $3::timestamp`;
+      dateFilter = ` AND date >= $${params.length + 1}::timestamp`;
       currentDate.setFullYear(currentDate.getFullYear() - 1);
-    } else if (srok === 'всё время') {
-      dateFilter = '';
+      params.push(currentDate); // Добавляем дату в параметры
     }
 
     query += dateFilter;
     query += ' ORDER BY category_id, date DESC';
 
-    const result = await pool.query(query, [user_id, category, currentDate]);
+    // Выполняем запрос с нужными параметрами
+    const result = await pool.query(query, params);
 
     let categoryName = null;
+    // Если фильтрация по категории активна, получаем имя категории
     if (category !== 'всё') {
       const categoryResult = await pool.query(
         'SELECT name FROM categories WHERE category_id = $1 AND user_id = $2',
@@ -191,6 +201,7 @@ app.post('/getTransactions', async (req, res) => {
       }
     }
 
+    // Добавляем имя категории в каждый объект транзакции
     const transactions = result.rows.map(transaction => ({
       ...transaction,
       category_name: categoryName
